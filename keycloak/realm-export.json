@@ -9,33 +9,46 @@
   "ssoSessionIdleTimeout": 1800,
   "ssoSessionMaxLifespan": 36000,
   "roles": {
-    "realm": [
-      {
-        "name": "admin",
-        "description": "Administrator: full access to orders and the admin endpoints",
-        "composite": true,
-        "composites": {
-          "client": {
-            "rbac-api": ["order:read", "order:write", "order:delete"]
-          }
-        }
-      },
-      {
-        "name": "user",
-        "description": "Regular user: may read orders",
-        "composite": true,
-        "composites": {
-          "client": {
-            "rbac-api": ["order:read"]
-          }
-        }
-      }
-    ],
     "client": {
       "rbac-api": [
-        { "name": "order:read", "description": "Permission: list and view orders" },
-        { "name": "order:write", "description": "Permission: create orders" },
-        { "name": "order:delete", "description": "Permission: delete orders" }
+        {
+          "name": "admin",
+          "description": "Administrator: full access to orders and the admin endpoints",
+          "composite": true,
+          "composites": {
+            "client": {
+              "rbac-api": [
+                "order:read",
+                "order:write",
+                "order:delete"
+              ]
+            }
+          }
+        },
+        {
+          "name": "user",
+          "description": "Regular user: may read orders",
+          "composite": true,
+          "composites": {
+            "client": {
+              "rbac-api": [
+                "order:read"
+              ]
+            }
+          }
+        },
+        {
+          "name": "order:read",
+          "description": "Permission: list and view orders"
+        },
+        {
+          "name": "order:write",
+          "description": "Permission: create orders"
+        },
+        {
+          "name": "order:delete",
+          "description": "Permission: delete orders"
+        }
       ]
     }
   },
@@ -66,14 +79,26 @@
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": false,
       "fullScopeAllowed": true,
-      "redirectUris": ["http://127.0.0.1:7890/*", "http://localhost:7890/*"],
-      "webOrigins": ["+"],
+      "redirectUris": [
+        "http://127.0.0.1:7890/*",
+        "http://localhost:7890/*"
+      ],
+      "webOrigins": [
+        "+"
+      ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "http://127.0.0.1:7890/*##http://localhost:7890/*"
       },
-      "defaultClientScopes": ["openid", "profile", "email", "roles"],
-      "optionalClientScopes": ["offline_access"],
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ],
       "protocolMappers": [
         {
           "name": "rbac-api audience",
@@ -101,7 +126,12 @@
       "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": false,
       "fullScopeAllowed": true,
-      "defaultClientScopes": ["openid", "profile", "email", "roles"],
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "roles"
+      ],
       "protocolMappers": [
         {
           "name": "rbac-api audience",
@@ -126,8 +156,21 @@
       "firstName": "Alice",
       "lastName": "Admin",
       "email": "alice@example.com",
-      "credentials": [{ "type": "password", "value": "alice", "temporary": false }],
-      "realmRoles": ["admin", "default-roles-rbac-demo"]
+      "credentials": [
+        {
+          "type": "password",
+          "value": "alice",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "default-roles-rbac-demo"
+      ],
+      "clientRoles": {
+        "rbac-api": [
+          "admin"
+        ]
+      }
     },
     {
       "username": "bob",
@@ -136,8 +179,21 @@
       "firstName": "Bob",
       "lastName": "Reader",
       "email": "bob@example.com",
-      "credentials": [{ "type": "password", "value": "bob", "temporary": false }],
-      "realmRoles": ["user", "default-roles-rbac-demo"]
+      "credentials": [
+        {
+          "type": "password",
+          "value": "bob",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "default-roles-rbac-demo"
+      ],
+      "clientRoles": {
+        "rbac-api": [
+          "user"
+        ]
+      }
     },
     {
       "username": "carol",
@@ -146,10 +202,21 @@
       "firstName": "Carol",
       "lastName": "Writer",
       "email": "carol@example.com",
-      "credentials": [{ "type": "password", "value": "carol", "temporary": false }],
-      "realmRoles": ["user", "default-roles-rbac-demo"],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "carol",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "default-roles-rbac-demo"
+      ],
       "clientRoles": {
-        "rbac-api": ["order:write"]
+        "rbac-api": [
+          "user",
+          "order:write"
+        ]
       }
     }
   ]

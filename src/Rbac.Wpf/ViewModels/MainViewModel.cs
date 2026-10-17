@@ -157,14 +157,9 @@ public partial class MainViewModel : ObservableObject
         AuditEntries.Clear();
         if (session is null) return;
 
-        foreach (var r in session.Roles.Where(IsAppRole)) Roles.Add(r);
+        foreach (var r in session.Roles) Roles.Add(r);
         foreach (var p in session.Permissions) Permissions.Add(p);
     }
-
-    /// <summary>Hide Keycloak's built-in realm roles; only the demo's own roles are interesting here.</summary>
-    private static bool IsAppRole(string role) =>
-        !role.StartsWith("default-roles-", StringComparison.OrdinalIgnoreCase) &&
-        role is not ("offline_access" or "uma_authorization");
 
     private async Task EnsureFreshTokenAsync()
     {

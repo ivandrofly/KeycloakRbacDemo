@@ -64,8 +64,10 @@ public sealed class AuthService
     }
 
     /// <summary>
-    /// Reads roles/permissions from the access token payload. This is purely for shaping the UI;
-    /// the API re-validates the same token and enforces the rules server-side.
+    /// Reads roles/permissions from the access token payload. All of them are client roles of
+    /// <c>rbac-api</c> (<c>resource_access.rbac-api.roles</c>); names with a <c>:</c> are permissions,
+    /// plain names are roles. This is purely for shaping the UI; the API re-validates the same
+    /// token and enforces the rules server-side.
     /// </summary>
     private static UserSession BuildSession(string accessToken, string? refreshToken, string? idToken, DateTimeOffset expiresAt)
     {
@@ -73,16 +75,17 @@ public sealed class AuthService
         var root = payload.RootElement;
 
         var userName = root.TryGetProperty("preferred_username", out var u) ? u.GetString() ?? "?" : "?";
-        var roles = ReadRoles(root, "realm_access");
-        var permissions = root.TryGetProperty("resource_access", out var ra) ? ReadRoles(ra, ApiClientId) : [];
+        var apiRoles = root.TryGetProperty("resource_access", out var ra) ? ReadClientRoles(ra, ApiClientId) : [];
 
-        return new UserSession(accessToken, refreshToken, idToken, expiresAt, userName, roles, permissions);
+        return new UserSession(accessToken, refreshToken, idToken, expiresAt, userName,
+            Roles: apiRoles.Where(r => !r.Contains(':')).ToList(),
+            Permissions: apiRoles.Where(r => r.Contains(':')).ToList());
     }
 
-    private static IReadOnlyList<string> ReadRoles(JsonElement parent, string property)
+    private static IReadOnlyList<string> ReadClientRoles(JsonElement resourceAccess, string clientId)
     {
-        if (!parent.TryGetProperty(property, out var obj) ||
-            !obj.TryGetProperty("roles", out var roles) ||
+        if (!resourceAccess.TryGetProperty(clientId, out var client) ||
+            !client.TryGetProperty("roles", out var roles) ||
             roles.ValueKind != JsonValueKind.Array)
             return [];
 

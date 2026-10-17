@@ -17,18 +17,20 @@ src/Rbac.Wpf                 the desktop client
 
 ## Authorization model
 
-Two layers, both plain Keycloak roles:
+Everything is a **client role on `rbac-api`**; the realm itself carries nothing app-specific.
+Two kinds of role are told apart by name:
 
-| Layer | Where in Keycloak | Values | In the token |
+| Kind | Naming | Values | In the token |
 |---|---|---|---|
-| Who you are | realm roles | `admin`, `user` | `realm_access.roles` |
-| What you may do | client roles on `rbac-api` | `order:read`, `order:write`, `order:delete` | `resource_access.rbac-api.roles` |
+| Who you are | plain name | `admin`, `user` | `resource_access.rbac-api.roles` |
+| What you may do | `resource:action` | `order:read`, `order:write`, `order:delete` | `resource_access.rbac-api.roles` |
 
 `admin` and `user` are **composite** roles: `admin` grants all three permissions, `user` grants `order:read`.
 Permissions can also be assigned directly to a user (carol has `order:write` on top of `user`).
 
-The API's `KeycloakClaimsTransformer` flattens the nested JSON into standard role claims and `permission` claims
-once per request. Everything after that is vanilla ASP.NET Core authorization.
+The API's `KeycloakClaimsTransformer` reads that one list once per request and turns plain names into standard
+role claims and `resource:action` names into `permission` claims. Everything after that is vanilla ASP.NET Core
+authorization (`RequireRole("admin")`, `RequireClaim("permission", "order:read")`).
 
 ### Endpoints
 
@@ -42,7 +44,7 @@ once per request. Everything after that is vanilla ASP.NET Core authorization.
 
 ### Test users (password = username)
 
-| User | Realm role | Extra permission | Sees in the WPF app |
+| User | Role | Extra permission | Sees in the WPF app |
 |---|---|---|---|
 | alice | admin | | orders, new-order form, delete buttons, admin audit log |
 | carol | user | `order:write` | orders, new-order form |
@@ -52,7 +54,7 @@ once per request. Everything after that is vanilla ASP.NET Core authorization.
 
 | Client | Type | Used by |
 |---|---|---|
-| `rbac-api` | bearer-only | the API: owns the permission roles and is the token audience (`aud`) |
+| `rbac-api` | bearer-only | the API: owns all roles (`admin`, `user`, `order:*`) and is the token audience (`aud`) |
 | `rbac-wpf` | public, PKCE S256, redirect `http://127.0.0.1:7890/*` | the WPF app |
 | `rbac-test-cli` | public, **password grant** | `scripts/smoke-test.ps1` and `Rbac.Api.http` only. Test convenience, delete it for anything real. |
 
@@ -111,7 +113,10 @@ once per request. Everything after that is vanilla ASP.NET Core authorization.
 
 - Sign in as **bob**, then press *Call admin endpoint anyway*. The button is visible to everyone on purpose:
   the API answers `403 Forbidden`, proving the server enforces the rules even when a client ignores the UI.
-- In the Keycloak admin console (realm `rbac-demo` → Users → bob → Role mapping) assign the client role
-  `rbac-api / order:write`, sign out and back in: the *New order* form appears.
-- Add a new permission (e.g. `order:approve`) as a client role on `rbac-api`, add it to the `admin` composite,
-  then add a policy and endpoint in `Program.cs` and a `CanApproveOrders` flag in `MainViewModel`.
+- In the Keycloak admin console (realm `rbac-demo` → Users → bob → Role mapping → Assign role → filter by
+  clients) assign `rbac-api order:write`, sign out and back in: the *New order* form appears.
+- Add a new permission (e.g. `order:approve`) as a client role on `rbac-api` (Clients → rbac-api → Roles), add it
+  to the `admin` composite, then add a policy and endpoint in `Program.cs` and a `CanApproveOrders` flag in
+  `MainViewModel`.
+- Add a new role (e.g. `auditor`) the same way; because it has no `:` it becomes a role claim, usable with
+  `RequireRole("auditor")`.
