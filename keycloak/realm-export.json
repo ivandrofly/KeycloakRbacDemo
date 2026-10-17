@@ -1,0 +1,156 @@
+{
+  "realm": "rbac-demo",
+  "displayName": "RBAC Demo",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "Administrator: full access to orders and the admin endpoints",
+        "composite": true,
+        "composites": {
+          "client": {
+            "rbac-api": ["order:read", "order:write", "order:delete"]
+          }
+        }
+      },
+      {
+        "name": "user",
+        "description": "Regular user: may read orders",
+        "composite": true,
+        "composites": {
+          "client": {
+            "rbac-api": ["order:read"]
+          }
+        }
+      }
+    ],
+    "client": {
+      "rbac-api": [
+        { "name": "order:read", "description": "Permission: list and view orders" },
+        { "name": "order:write", "description": "Permission: create orders" },
+        { "name": "order:delete", "description": "Permission: delete orders" }
+      ]
+    }
+  },
+  "clients": [
+    {
+      "clientId": "rbac-api",
+      "name": "RBAC API (resource server)",
+      "description": "Owns the fine-grained permission roles and is the audience of access tokens",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "bearerOnly": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "fullScopeAllowed": true
+    },
+    {
+      "clientId": "rbac-wpf",
+      "name": "RBAC WPF client",
+      "description": "Desktop client using Authorization Code + PKCE with a loopback redirect",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "fullScopeAllowed": true,
+      "redirectUris": ["http://127.0.0.1:7890/*", "http://localhost:7890/*"],
+      "webOrigins": ["+"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://127.0.0.1:7890/*##http://localhost:7890/*"
+      },
+      "defaultClientScopes": ["openid", "profile", "email", "roles"],
+      "optionalClientScopes": ["offline_access"],
+      "protocolMappers": [
+        {
+          "name": "rbac-api audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "rbac-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "rbac-test-cli",
+      "name": "RBAC smoke-test client (TEST ONLY)",
+      "description": "Password grant enabled so scripts/smoke-test.ps1 can fetch tokens without a browser. Do not use in production.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "fullScopeAllowed": true,
+      "defaultClientScopes": ["openid", "profile", "email", "roles"],
+      "protocolMappers": [
+        {
+          "name": "rbac-api audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "rbac-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "alice",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Alice",
+      "lastName": "Admin",
+      "email": "alice@example.com",
+      "credentials": [{ "type": "password", "value": "alice", "temporary": false }],
+      "realmRoles": ["admin", "default-roles-rbac-demo"]
+    },
+    {
+      "username": "bob",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Bob",
+      "lastName": "Reader",
+      "email": "bob@example.com",
+      "credentials": [{ "type": "password", "value": "bob", "temporary": false }],
+      "realmRoles": ["user", "default-roles-rbac-demo"]
+    },
+    {
+      "username": "carol",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Carol",
+      "lastName": "Writer",
+      "email": "carol@example.com",
+      "credentials": [{ "type": "password", "value": "carol", "temporary": false }],
+      "realmRoles": ["user", "default-roles-rbac-demo"],
+      "clientRoles": {
+        "rbac-api": ["order:write"]
+      }
+    }
+  ]
+}

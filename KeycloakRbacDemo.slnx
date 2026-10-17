@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Rbac.Api/Rbac.Api.csproj" />
+    <Project Path="src/Rbac.Wpf/Rbac.Wpf.csproj" />
+  </Folder>
+</Solution>

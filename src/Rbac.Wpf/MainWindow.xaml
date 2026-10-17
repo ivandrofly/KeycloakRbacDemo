@@ -1,0 +1,246 @@
+﻿<Window x:Class="Rbac.Wpf.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:Rbac.Wpf.ViewModels"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
+        Title="RBAC Demo - Keycloak + .NET"
+        Width="1060" Height="680" MinWidth="820" MinHeight="520"
+        Background="{StaticResource Brush.Bg}"
+        FontFamily="Segoe UI" FontSize="13"
+        Foreground="{StaticResource Brush.Text}">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- ================= Header ================= -->
+        <Border Grid.Row="0" Style="{StaticResource Card}" Padding="16,12" Margin="0,0,0,16">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Text="Role-Based Access Control Demo" FontSize="20" FontWeight="SemiBold" />
+                    <TextBlock Style="{StaticResource Muted}"
+                               Text="Keycloak issues the token · the API enforces roles and permissions · this UI only shows what you may do" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <StackPanel Visibility="{Binding IsLoggedIn, Converter={StaticResource BoolToVis}}"
+                                Orientation="Vertical" Margin="0,0,14,0" VerticalAlignment="Center">
+                        <TextBlock HorizontalAlignment="Right">
+                            <Run Text="Signed in as" Foreground="{StaticResource Brush.Muted}" />
+                            <Run Text="{Binding UserName, Mode=OneWay}" FontWeight="SemiBold" />
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource Muted}" HorizontalAlignment="Right" Text="{Binding TokenExpires}" />
+                    </StackPanel>
+                    <Button Content="Sign in with Keycloak" Command="{Binding LoginCommand}"
+                            Visibility="{Binding IsLoggedOut, Converter={StaticResource BoolToVis}}" />
+                    <Button Content="Sign out" Command="{Binding LogoutCommand}" Style="{StaticResource SecondaryButton}"
+                            Visibility="{Binding IsLoggedIn, Converter={StaticResource BoolToVis}}" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ================= Logged-out state ================= -->
+        <Border Grid.Row="1" Style="{StaticResource Card}" VerticalAlignment="Center" HorizontalAlignment="Center"
+                Padding="40,30" Visibility="{Binding IsLoggedOut, Converter={StaticResource BoolToVis}}">
+            <StackPanel>
+                <TextBlock Text="Sign in to continue" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                <TextBlock Style="{StaticResource Muted}" Margin="0,8,0,0" TextAlignment="Center"
+                           Text="Try alice (admin), carol (user + order:write) or bob (user). Password = username." />
+            </StackPanel>
+        </Border>
+
+        <!-- ================= Logged-in content ================= -->
+        <Grid Grid.Row="1" Visibility="{Binding IsLoggedIn, Converter={StaticResource BoolToVis}}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3*" />
+                <ColumnDefinition Width="16" />
+                <ColumnDefinition Width="2*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Orders: needs order:read -->
+            <Border Grid.Column="0" Style="{StaticResource Card}"
+                    Visibility="{Binding CanReadOrders, Converter={StaticResource BoolToVis}}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <DockPanel Grid.Row="0" Margin="0,0,0,10">
+                        <Button DockPanel.Dock="Right" Content="Refresh" Style="{StaticResource SecondaryButton}"
+                                Command="{Binding LoadOrdersCommand}" Margin="0" />
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource CardTitle}" Text="Orders" Margin="0" />
+                            <TextBlock Style="{StaticResource Muted}" Text="visible because you have order:read" />
+                        </StackPanel>
+                    </DockPanel>
+
+                    <!-- New order form: needs order:write -->
+                    <Border Grid.Row="1" Background="#F7F9FB" CornerRadius="8" Padding="12" Margin="0,0,0,10"
+                            Visibility="{Binding CanWriteOrders, Converter={StaticResource BoolToVis}}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Muted}" Text="New order (visible because you have order:write)" Margin="0,0,0,6" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="120" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0" Margin="0,0,8,0"
+                                         Text="{Binding NewOrderCustomer, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="Customer name" />
+                                <TextBox Grid.Column="1" Margin="0,0,8,0"
+                                         Text="{Binding NewOrderAmount, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="Amount" />
+                                <Button Grid.Column="2" Content="Create" Command="{Binding CreateOrderCommand}" Margin="0" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <ListView Grid.Row="2" ItemsSource="{Binding Orders}" BorderThickness="0" Background="Transparent">
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="Padding" Value="4" />
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="#" Width="40" DisplayMemberBinding="{Binding Id}" />
+                                <GridViewColumn Header="Customer" Width="170" DisplayMemberBinding="{Binding Customer}" />
+                                <GridViewColumn Header="Amount" Width="90" DisplayMemberBinding="{Binding Amount, StringFormat={}{0:N2}}" />
+                                <GridViewColumn Header="Created" Width="125" DisplayMemberBinding="{Binding CreatedAt.LocalDateTime, StringFormat={}{0:yyyy-MM-dd HH:mm}}" />
+                                <!-- Delete: needs order:delete -->
+                                <GridViewColumn Width="80">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Button Content="Delete" Style="{StaticResource DangerButton}"
+                                                    Command="{Binding DataContext.DeleteOrderCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}"
+                                                    Visibility="{Binding DataContext.CanDeleteOrders, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}" />
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+                </Grid>
+            </Border>
+
+            <!-- Right column -->
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="16" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- Your access: always shown when signed in -->
+                <Border Grid.Row="0" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource CardTitle}" Text="Your access" />
+
+                        <TextBlock Style="{StaticResource Muted}" Text="Realm roles (who you are)" Margin="0,0,0,4" />
+                        <ItemsControl ItemsSource="{Binding Roles}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource Chip}" Background="{StaticResource Brush.RoleChip}">
+                                        <TextBlock Text="{Binding}" Foreground="{StaticResource Brush.Accent}" FontWeight="SemiBold" />
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Style="{StaticResource Muted}" Text="Permissions on rbac-api (what you may do)" Margin="0,6,0,4" />
+                        <ItemsControl ItemsSource="{Binding Permissions}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource Chip}" Background="{StaticResource Brush.PermChip}">
+                                        <TextBlock Text="{Binding}" Foreground="#1E7F4F" FontWeight="SemiBold" />
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <Separator Margin="0,8" />
+                        <TextBlock Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,8"
+                                   Text="This button is shown to everyone on purpose. The API still checks the token, so non-admins get 403." />
+                        <Button Content="Call admin endpoint anyway" Style="{StaticResource SecondaryButton}"
+                                Command="{Binding TryAdminCallCommand}" HorizontalAlignment="Left" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Admin: needs admin role -->
+                <Border Grid.Row="2" Style="{StaticResource Card}"
+                        Visibility="{Binding IsAdmin, Converter={StaticResource BoolToVis}}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <DockPanel Grid.Row="0" Margin="0,0,0,10">
+                            <Button DockPanel.Dock="Right" Content="Refresh" Style="{StaticResource SecondaryButton}"
+                                    Command="{Binding LoadAuditCommand}" Margin="0" />
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource CardTitle}" Text="Admin · Audit log" Margin="0" />
+                                <TextBlock Style="{StaticResource Muted}" Text="visible because you have the admin role" />
+                            </StackPanel>
+                        </DockPanel>
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding AuditEntries}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Margin="0,0,0,6" TextWrapping="Wrap">
+                                            <Run Text="{Binding At.LocalDateTime, Mode=OneWay, StringFormat={}{0:HH:mm:ss}}" Foreground="{StaticResource Brush.Muted}" />
+                                            <Run Text="{Binding User, Mode=OneWay}" FontWeight="SemiBold" />
+                                            <Run Text="{Binding Action, Mode=OneWay}" Foreground="{StaticResource Brush.Accent}" />
+                                            <Run Text="{Binding Details, Mode=OneWay}" />
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- ================= Status bar ================= -->
+        <Border Grid.Row="2" Style="{StaticResource Card}" Padding="12,8" Margin="0,16,0,0">
+            <DockPanel>
+                <ProgressBar DockPanel.Dock="Right" Width="90" Height="6" IsIndeterminate="True" Margin="12,0,0,0"
+                             Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}" />
+                <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" VerticalAlignment="Center">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding StatusIsError}" Value="True">
+                                    <Setter Property="Foreground" Value="{StaticResource Brush.Danger}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </DockPanel>
+        </Border>
+    </Grid>
+</Window>

@@ -1,0 +1,34 @@
+@api = http://localhost:5100
+@keycloak = http://localhost:8180/realms/rbac-demo
+
+### 1. Get a token for a test user (uses the test-only rbac-test-cli client; password = username)
+# @name login
+POST {{keycloak}}/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password&client_id=rbac-test-cli&username=alice&password=alice
+
+@token = {{login.response.body.access_token}}
+
+### 2. Who am I? (any authenticated user)
+GET {{api}}/api/me
+Authorization: Bearer {{token}}
+
+### 3. List orders (order:read)
+GET {{api}}/api/orders
+Authorization: Bearer {{token}}
+
+### 4. Create order (order:write) - bob gets 403
+POST {{api}}/api/orders
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "customer": "Acme Corp", "amount": 199.90 }
+
+### 5. Delete order (order:delete) - only alice
+DELETE {{api}}/api/orders/1
+Authorization: Bearer {{token}}
+
+### 6. Audit log (admin role) - only alice
+GET {{api}}/api/admin/audit
+Authorization: Bearer {{token}}
