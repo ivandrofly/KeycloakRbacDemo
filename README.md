@@ -26,7 +26,17 @@ Two kinds of role are told apart by name:
 | What you may do | `resource:action` | `order:read`, `order:write`, `order:delete` | `resource_access.rbac-api.roles` |
 
 `admin` and `user` are **composite** roles: `admin` grants all three permissions, `user` grants `order:read`.
-Permissions can also be assigned directly to a user (carol has `order:write` on top of `user`).
+
+Users do not get roles directly. They are members of a **group**, and the group carries the role mapping:
+
+| Group | Client roles on `rbac-api` |
+|---|---|
+| `/admins` | `admin` |
+| `/users` | `user` |
+
+Permissions can still be assigned directly to a user on top of the group (carol has `order:write` in addition to
+`/users`). Keycloak's effective roles are the union of group roles, direct roles and composites, so the token looks
+exactly the same whichever path a role came from.
 
 The API's `KeycloakClaimsTransformer` reads that one list once per request and turns plain names into standard
 role claims and `resource:action` names into `permission` claims. Everything after that is vanilla ASP.NET Core
@@ -44,11 +54,11 @@ authorization (`RequireRole("admin")`, `RequireClaim("permission", "order:read")
 
 ### Test users (password = username)
 
-| User | Role | Extra permission | Sees in the WPF app |
+| User | Group | Extra permission | Sees in the WPF app |
 |---|---|---|---|
-| alice | admin | | orders, new-order form, delete buttons, admin audit log |
-| carol | user | `order:write` | orders, new-order form |
-| bob | user | | orders, read-only |
+| alice | `/admins` | | orders, new-order form, delete buttons, admin audit log |
+| carol | `/users` | `order:write` | orders, new-order form |
+| bob | `/users` | | orders, read-only |
 
 ## Keycloak clients
 
@@ -113,8 +123,10 @@ authorization (`RequireRole("admin")`, `RequireClaim("permission", "order:read")
 
 - Sign in as **bob**, then press *Call admin endpoint anyway*. The button is visible to everyone on purpose:
   the API answers `403 Forbidden`, proving the server enforces the rules even when a client ignores the UI.
-- In the Keycloak admin console (realm `rbac-demo` → Users → bob → Role mapping → Assign role → filter by
-  clients) assign `rbac-api order:write`, sign out and back in: the *New order* form appears.
+- In the Keycloak admin console (realm `rbac-demo` → Users → bob → Groups → Join Group) add bob to `/admins`,
+  sign out and back in: the delete buttons and the admin panel appear. No role was touched, only membership.
+- Or assign a single permission directly (Users → bob → Role mapping → Assign role → filter by clients →
+  `rbac-api order:write`): the *New order* form appears while the rest stays read-only.
 - Add a new permission (e.g. `order:approve`) as a client role on `rbac-api` (Clients → rbac-api → Roles), add it
   to the `admin` composite, then add a policy and endpoint in `Program.cs` and a `CanApproveOrders` flag in
   `MainViewModel`.
