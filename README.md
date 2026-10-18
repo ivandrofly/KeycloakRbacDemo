@@ -35,8 +35,11 @@ Users do not get roles directly. They are members of a **group**, and the group 
 | `/users` | `user` |
 
 Permissions can still be assigned directly to a user on top of the group (carol has `order:write` in addition to
-`/users`). Keycloak's effective roles are the union of group roles, direct roles and composites, so the token looks
-exactly the same whichever path a role came from.
+`/users`). The token looks exactly the same whichever path a role came from.
+
+> **Note:** Keycloak evaluates effective roles as the union of direct roles, group roles and composites, so you can
+> mix the approaches. For a clean demo I'd move all three users to groups and keep carol's extra permission as a
+> direct assignment to show both paths.
 
 The API's `KeycloakClaimsTransformer` reads that one list once per request and turns plain names into standard
 role claims and `resource:action` names into `permission` claims. Everything after that is vanilla ASP.NET Core
