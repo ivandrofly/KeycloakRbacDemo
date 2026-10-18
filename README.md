@@ -55,13 +55,16 @@ authorization (`RequireRole("admin")`, `RequireClaim("permission", "order:read")
 | `DELETE /api/orders/{id}` | permission `order:delete` |
 | `GET  /api/admin/audit` | role `admin` |
 
-### Test users (password = username)
+### Test users
 
-| User | Group | Extra permission | Sees in the WPF app |
-|---|---|---|---|
-| alice | `/admins` | | orders, new-order form, delete buttons, admin audit log |
-| carol | `/users` | `order:write` | orders, new-order form |
-| bob | `/users` | | orders, read-only |
+| User | Password | Group | Extra permission | Effective access | Sees in the WPF app |
+|---|---|---|---|---|---|
+| alice | `alice` | `/admins` | | `order:read`, `order:write`, `order:delete`, admin endpoints | orders, new-order form, delete buttons, admin audit log |
+| carol | `carol` | `/users` | `order:write` | `order:read`, `order:write` | orders, new-order form |
+| bob | `bob` | `/users` | | `order:read` | orders, read-only |
+
+These users exist only in the `rbac-demo` realm. The Keycloak admin console (realm `master`) uses the admin account
+from your Docker compose environment and is not touched by this project.
 
 ## Keycloak clients
 
