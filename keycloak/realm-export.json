@@ -148,6 +148,32 @@
       ]
     }
   ],
+  "groups": [
+    {
+      "name": "admins",
+      "path": "/admins",
+      "attributes": {},
+      "realmRoles": [],
+      "clientRoles": {
+        "rbac-api": [
+          "admin"
+        ]
+      },
+      "subGroups": []
+    },
+    {
+      "name": "users",
+      "path": "/users",
+      "attributes": {},
+      "realmRoles": [],
+      "clientRoles": {
+        "rbac-api": [
+          "user"
+        ]
+      },
+      "subGroups": []
+    }
+  ],
   "users": [
     {
       "username": "alice",
@@ -166,11 +192,9 @@
       "realmRoles": [
         "default-roles-rbac-demo"
       ],
-      "clientRoles": {
-        "rbac-api": [
-          "admin"
-        ]
-      }
+      "groups": [
+        "/admins"
+      ]
     },
     {
       "username": "bob",
@@ -189,11 +213,9 @@
       "realmRoles": [
         "default-roles-rbac-demo"
       ],
-      "clientRoles": {
-        "rbac-api": [
-          "user"
-        ]
-      }
+      "groups": [
+        "/users"
+      ]
     },
     {
       "username": "carol",
@@ -212,9 +234,11 @@
       "realmRoles": [
         "default-roles-rbac-demo"
       ],
+      "groups": [
+        "/users"
+      ],
       "clientRoles": {
         "rbac-api": [
-          "user",
           "order:write"
         ]
       }

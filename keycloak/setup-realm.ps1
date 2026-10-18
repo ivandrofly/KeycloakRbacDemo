@@ -68,7 +68,7 @@ Write-Host "Realm created. Issuer: $issuer" -ForegroundColor Green
 Write-Host "Admin console: $KeycloakUrl/admin/master/console/#/$realm"
 Write-Host ""
 Write-Host "Test users (password = username):"
-[pscustomobject]@{ User = 'alice'; Role = 'admin'; ExtraPermission = '';            Effective = 'order:read, order:write, order:delete, admin endpoints' },
-[pscustomobject]@{ User = 'bob';   Role = 'user';  ExtraPermission = '';            Effective = 'order:read' },
-[pscustomobject]@{ User = 'carol'; Role = 'user';  ExtraPermission = 'order:write'; Effective = 'order:read, order:write' } |
+[pscustomobject]@{ User = 'alice'; Group = '/admins'; Role = 'admin'; ExtraPermission = '';            Effective = 'order:read, order:write, order:delete, admin endpoints' },
+[pscustomobject]@{ User = 'bob';   Group = '/users';  Role = 'user';  ExtraPermission = '';            Effective = 'order:read' },
+[pscustomobject]@{ User = 'carol'; Group = '/users';  Role = 'user';  ExtraPermission = 'order:write'; Effective = 'order:read, order:write' } |
     Format-Table -AutoSize
