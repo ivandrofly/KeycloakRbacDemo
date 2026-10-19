@@ -71,7 +71,7 @@ from your Docker compose environment and is not touched by this project.
 
 | Client | Type | Used by |
 |---|---|---|
-| `rbac-api` | bearer-only | the API: owns all roles (`admin`, `user`, `order:*`) and is the token audience (`aud`) |
+| `rbac-api` | confidential, no login flows, **Authorization Services enabled** | the API: owns all roles (`admin`, `user`, `order:*`) and is the token audience (`aud`). Authorization Services is on so resources and policies can be defined on it too. |
 | `rbac-wpf` | public, PKCE S256, redirect `http://127.0.0.1:7890/*` | the WPF app |
 | `rbac-test-cli` | public, **password grant** | `scripts/smoke-test.ps1` and `Rbac.Api.http` only. Test convenience, delete it for anything real. |
 | `rbac-console` | confidential (secret `rbac-console-secret`), **password grant**, **Authorization Services enabled** | `src/Rbac.Cli`. The resource server for the [Authorization Services](#authorization-services-keycloak-side-permission-decisions) section. The fixed secret and the password grant are test conveniences, same caveat as above. |

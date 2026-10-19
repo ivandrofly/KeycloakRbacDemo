@@ -60,11 +60,12 @@
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": false,
-      "bearerOnly": true,
+      "bearerOnly": false,
       "standardFlowEnabled": false,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "serviceAccountsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": true,
       "fullScopeAllowed": true
     },
     {
