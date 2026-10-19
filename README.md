@@ -13,6 +13,7 @@ keycloak/setup-realm.ps1     imports the realm via the Keycloak Admin REST API
 scripts/smoke-test.ps1       calls every endpoint as every user and checks the status codes
 src/Rbac.Api                 the protected API           -> http://localhost:5100
 src/Rbac.Wpf                 the desktop client
+src/Rbac.Cli                 console app: asks Keycloak Authorization Services for permission decisions
 ```
 
 ## Authorization model
@@ -73,6 +74,62 @@ from your Docker compose environment and is not touched by this project.
 | `rbac-api` | bearer-only | the API: owns all roles (`admin`, `user`, `order:*`) and is the token audience (`aud`) |
 | `rbac-wpf` | public, PKCE S256, redirect `http://127.0.0.1:7890/*` | the WPF app |
 | `rbac-test-cli` | public, **password grant** | `scripts/smoke-test.ps1` and `Rbac.Api.http` only. Test convenience, delete it for anything real. |
+| `rbac-console` | confidential (secret `rbac-console-secret`), **password grant**, **Authorization Services enabled** | `src/Rbac.Cli`. The resource server for the [Authorization Services](#authorization-services-keycloak-side-permission-decisions) section. The fixed secret and the password grant are test conveniences, same caveat as above. |
+
+## Authorization Services (Keycloak-side permission decisions)
+
+The API above decides on its own by reading roles out of the token. Keycloak can also make the decision for you:
+a client with **Authorization Services** enabled becomes a *resource server* that knows its resources, the
+scopes (actions) on them, and the policies that grant them. A caller presents a user's access token and asks
+"may this user do `scope` on `resource`?"; Keycloak answers yes/no or hands back a *Requesting Party Token*
+(RPT) whose `authorization.permissions` claim lists everything the user may do.
+
+The `rbac-console` client is set up this way in `keycloak/realm-export.json` (`authorizationSettings`). It reuses
+the `rbac-api` roles, so the two decision layers always agree:
+
+| Resource | Scopes | Permission | Granted by policy |
+|---|---|---|---|
+| `Orders` (`/api/orders/*`) | `order:read` | *Read orders* | *Has order:read* (client role `rbac-api/order:read`) |
+| | `order:write` | *Write orders* | *Has order:write* (client role `rbac-api/order:write`) |
+| | `order:delete` | *Delete orders* | *Delete orders* (client role `rbac-api/order:delete`) |
+| `Audit log` (`/api/admin/audit`) | `audit:read` | *Read audit log* | *Is admin* (client role `rbac-api/admin`) |
+
+The role policies read the roles from the user's token, which is why `rbac-console` has `fullScopeAllowed` and the
+`roles` scope: the token must carry `resource_access.rbac-api.roles` or every policy denies.
+
+All of it goes through the ordinary token endpoint with the UMA ticket grant:
+
+```
+POST /realms/rbac-demo/protocol/openid-connect/token
+Authorization: Bearer <user access token>
+
+grant_type=urn:ietf:params:oauth:grant-type:uma-ticket
+&audience=rbac-console                       # the resource server whose policies are evaluated
+&permission=Orders#order:write               # optional: ask about one resource#scope
+&response_mode=decision                      # decision -> {"result":true} or 403 access_denied
+                                             # permissions -> JSON list of granted (resource, scopes)
+                                             # omitted -> a full RPT (JWT with an "authorization" claim)
+```
+
+`src/Rbac.Cli` does exactly that for every test user and compares the answers with what the groups and composites
+should produce. It exits with 1 if any decision differs and 2 if Keycloak or the client is missing:
+
+```powershell
+dotnet run --project src/Rbac.Cli
+```
+
+| Permission | alice | carol | bob |
+|---|---|---|---|
+| `Orders#order:read` | GRANT | GRANT | GRANT |
+| `Orders#order:write` | GRANT | GRANT | DENY |
+| `Orders#order:delete` | GRANT | DENY | DENY |
+| `Audit log#audit:read` | GRANT | DENY | DENY |
+
+It also prints alice's decoded RPT so you can see the `authorization.permissions` claim an API would check if it
+delegated the decision to Keycloak. Settings come from `KEYCLOAK_URL`, `KEYCLOAK_REALM`, `KEYCLOAK_CLIENT_ID` and
+`KEYCLOAK_CLIENT_SECRET` (defaults match this repo).
+
+> Existing realms do not pick the client up automatically: run `.\keycloak\setup-realm.ps1 -Recreate` once.
 
 ## Running it
 
@@ -98,7 +155,13 @@ from your Docker compose environment and is not touched by this project.
    dotnet run --project src/Rbac.Wpf
    ```
 
-5. Optional: **smoke-test the API** without the UI:
+5. Optional: **check Keycloak's own permission decisions** with the console app (see the section above):
+
+   ```powershell
+   dotnet run --project src/Rbac.Cli
+   ```
+
+6. Optional: **smoke-test the API** without the UI:
 
    ```powershell
    .\scripts\smoke-test.ps1
@@ -122,6 +185,9 @@ from your Docker compose environment and is not touched by this project.
   `Ipv4Http.cs`, which connects over IPv4 only. If you remove it and see hangs, that is why.
 - **401 from the API after login**: the token issuer must equal `Keycloak:Authority` in `appsettings.json`.
   Open Keycloak and the apps through the same host name (`localhost`).
+- **One 401 right after `setup-realm.ps1 -Recreate`** while the API keeps running: re-creating the realm rotates
+  its signing keys and the API still has the old ones cached. The first request with an unknown key id fails and
+  triggers a refresh; everything after that succeeds. Restart the API or just retry.
 - **`setup-realm.ps1` fails with 401 mid-way**: the admin token lives 60 s; the script fetches a fresh one
   before the import, but a very slow Keycloak can still exceed it. Just re-run.
 
@@ -138,3 +204,7 @@ from your Docker compose environment and is not touched by this project.
   `MainViewModel`.
 - Add a new role (e.g. `auditor`) the same way; because it has no `:` it becomes a role claim, usable with
   `RequireRole("auditor")`.
+- Open Clients → rbac-console → Authorization → Evaluate, pick bob and the `Orders` resource, and compare the result
+  with what `src/Rbac.Cli` prints. Then edit the *Write orders* permission to also apply the *Is admin* policy and
+  re-run the console app: nothing changes for alice, and carol now gets DENY because the decision strategy is
+  *unanimous*.
