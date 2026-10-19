@@ -66,7 +66,156 @@
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": true,
       "authorizationServicesEnabled": true,
-      "fullScopeAllowed": true
+      "fullScopeAllowed": true,
+      "authorizationSettings": {
+        "allowRemoteResourceManagement": false,
+        "policyEnforcementMode": "ENFORCING",
+        "decisionStrategy": "UNANIMOUS",
+        "scopes": [
+          {
+            "name": "order:read",
+            "displayName": "Read orders"
+          },
+          {
+            "name": "order:write",
+            "displayName": "Create orders"
+          },
+          {
+            "name": "order:delete",
+            "displayName": "Delete orders"
+          },
+          {
+            "name": "audit:read",
+            "displayName": "Read the audit log"
+          }
+        ],
+        "resources": [
+          {
+            "name": "Orders",
+            "displayName": "Orders",
+            "type": "urn:rbac-demo:resources:orders",
+            "ownerManagedAccess": false,
+            "uris": [
+              "/api/orders/*"
+            ],
+            "scopes": [
+              {
+                "name": "order:read"
+              },
+              {
+                "name": "order:write"
+              },
+              {
+                "name": "order:delete"
+              }
+            ]
+          },
+          {
+            "name": "Audit log",
+            "displayName": "Audit log",
+            "type": "urn:rbac-demo:resources:audit",
+            "ownerManagedAccess": false,
+            "uris": [
+              "/api/admin/audit"
+            ],
+            "scopes": [
+              {
+                "name": "audit:read"
+              }
+            ]
+          }
+        ],
+        "policies": [
+          {
+            "name": "Is admin",
+            "description": "Grants when the user has the rbac-api client role 'admin'",
+            "type": "role",
+            "logic": "POSITIVE",
+            "decisionStrategy": "UNANIMOUS",
+            "config": {
+              "roles": "[{\"id\": \"rbac-api/admin\", \"required\": false}]"
+            }
+          },
+          {
+            "name": "Has order:read",
+            "description": "Grants when the user has the rbac-api client role 'order:read'",
+            "type": "role",
+            "logic": "POSITIVE",
+            "decisionStrategy": "UNANIMOUS",
+            "config": {
+              "roles": "[{\"id\": \"rbac-api/order:read\", \"required\": false}]"
+            }
+          },
+          {
+            "name": "Has order:write",
+            "description": "Grants when the user has the rbac-api client role 'order:write'",
+            "type": "role",
+            "logic": "POSITIVE",
+            "decisionStrategy": "UNANIMOUS",
+            "config": {
+              "roles": "[{\"id\": \"rbac-api/order:write\", \"required\": false}]"
+            }
+          },
+          {
+            "name": "Has order:delete",
+            "description": "Grants when the user has the rbac-api client role 'order:delete'",
+            "type": "role",
+            "logic": "POSITIVE",
+            "decisionStrategy": "UNANIMOUS",
+            "config": {
+              "roles": "[{\"id\": \"rbac-api/order:delete\", \"required\": false}]"
+            }
+          },
+          {
+            "name": "Read orders",
+            "description": "Orders#order:read requires policy 'Has order:read'",
+            "type": "scope",
+            "logic": "POSITIVE",
+            "decisionStrategy": "UNANIMOUS",
+            "config": {
+              "resources": "[\"Orders\"]",
+              "scopes": "[\"order:read\"]",
+              "applyPolicies": "[\"Has order:read\"]"
+            }
+          },
+          {
+            "name": "Write orders",
+            "description": "Orders#order:write requires policy 'Has order:write'",
+            "type": "scope",
+            "logic": "POSITIVE",
+            "decisionStrategy": "UNANIMOUS",
+            "config": {
+              "resources": "[\"Orders\"]",
+              "scopes": "[\"order:write\"]",
+              "applyPolicies": "[\"Has order:write\"]"
+            }
+          },
+          {
+            "name": "Delete orders",
+            "description": "Orders#order:delete requires policy 'Has order:delete'",
+            "type": "scope",
+            "logic": "POSITIVE",
+            "decisionStrategy": "UNANIMOUS",
+            "config": {
+              "resources": "[\"Orders\"]",
+              "scopes": "[\"order:delete\"]",
+              "applyPolicies": "[\"Has order:delete\"]"
+            }
+          },
+          {
+            "name": "Read audit log",
+            "description": "Audit log#audit:read requires policy 'Is admin'",
+            "type": "scope",
+            "logic": "POSITIVE",
+            "decisionStrategy": "UNANIMOUS",
+            "config": {
+              "resources": "[\"Audit log\"]",
+              "scopes": "[\"audit:read\"]",
+              "applyPolicies": "[\"Is admin\"]"
+            }
+          }
+        ]
+      }
     },
     {
       "clientId": "rbac-wpf",

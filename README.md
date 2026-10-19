@@ -71,7 +71,7 @@ from your Docker compose environment and is not touched by this project.
 
 | Client | Type | Used by |
 |---|---|---|
-| `rbac-api` | confidential, no login flows, **Authorization Services enabled** | the API: owns all roles (`admin`, `user`, `order:*`) and is the token audience (`aud`). Authorization Services is on so resources and policies can be defined on it too. |
+| `rbac-api` | confidential, no login flows, **Authorization Services enabled** | the API: owns all roles (`admin`, `user`, `order:*`) and is the token audience (`aud`). Carries the same demo resources, scopes, policies and permissions as `rbac-console`. |
 | `rbac-wpf` | public, PKCE S256, redirect `http://127.0.0.1:7890/*` | the WPF app |
 | `rbac-test-cli` | public, **password grant** | `scripts/smoke-test.ps1` and `Rbac.Api.http` only. Test convenience, delete it for anything real. |
 | `rbac-console` | confidential (secret `rbac-console-secret`), **password grant**, **Authorization Services enabled** | `src/Rbac.Cli`. The resource server for the [Authorization Services](#authorization-services-keycloak-side-permission-decisions) section. The fixed secret and the password grant are test conveniences, same caveat as above. |
@@ -84,8 +84,8 @@ scopes (actions) on them, and the policies that grant them. A caller presents a 
 "may this user do `scope` on `resource`?"; Keycloak answers yes/no or hands back a *Requesting Party Token*
 (RPT) whose `authorization.permissions` claim lists everything the user may do.
 
-The `rbac-console` client is set up this way in `keycloak/realm-export.json` (`authorizationSettings`). It reuses
-the `rbac-api` roles, so the two decision layers always agree:
+Both `rbac-api` and `rbac-console` are set up this way in `keycloak/realm-export.json` (`authorizationSettings`),
+with identical demo content. The policies reuse the `rbac-api` roles, so the two decision layers always agree:
 
 | Resource | Scopes | Permission | Granted by policy |
 |---|---|---|---|
@@ -95,7 +95,8 @@ the `rbac-api` roles, so the two decision layers always agree:
 | `Audit log` (`/api/admin/audit`) | `audit:read` | *Read audit log* | *Is admin* (client role `rbac-api/admin`) |
 
 The role policies read the roles from the user's token, which is why `rbac-console` has `fullScopeAllowed` and the
-`roles` scope: the token must carry `resource_access.rbac-api.roles` or every policy denies.
+`roles` scope: the token must carry `resource_access.rbac-api.roles` or every policy denies. `rbac-api` has no login
+flow of its own; to evaluate *its* settings, log in through another client and pass `audience=rbac-api`.
 
 All of it goes through the ordinary token endpoint with the UMA ticket grant:
 
@@ -127,7 +128,12 @@ dotnet run --project src/Rbac.Cli
 
 It also prints alice's decoded RPT so you can see the `authorization.permissions` claim an API would check if it
 delegated the decision to Keycloak. Settings come from `KEYCLOAK_URL`, `KEYCLOAK_REALM`, `KEYCLOAK_CLIENT_ID` and
-`KEYCLOAK_CLIENT_SECRET` (defaults match this repo).
+`KEYCLOAK_CLIENT_SECRET` (defaults match this repo). `KEYCLOAK_AUDIENCE` picks the resource server to evaluate; it
+defaults to the login client, so to check the settings on `rbac-api` instead:
+
+```powershell
+$env:KEYCLOAK_AUDIENCE = 'rbac-api'; dotnet run --project src/Rbac.Cli
+```
 
 > Existing realms do not pick the client up automatically: run `.\keycloak\setup-realm.ps1 -Recreate` once.
 

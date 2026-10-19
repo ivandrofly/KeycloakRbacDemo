@@ -22,7 +22,8 @@ var expected = new Dictionary<string, bool[]>
 
 Console.WriteLine($"Keycloak : {settings.Url}");
 Console.WriteLine($"Realm    : {settings.Realm}");
-Console.WriteLine($"Client   : {settings.ClientId} (resource server with Authorization Services)");
+Console.WriteLine($"Login via: {settings.ClientId}");
+Console.WriteLine($"Audience : {settings.Audience} (resource server whose Authorization Services settings are evaluated)");
 
 var discovery = await keycloak.DiscoverAsync();
 if (!discovery.IsSuccess) return Fail(2, discovery.Error!);

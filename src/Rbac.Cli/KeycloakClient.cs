@@ -6,13 +6,20 @@ using System.Text.Json.Serialization;
 
 namespace Rbac.Cli;
 
-public sealed record KeycloakSettings(string Url, string Realm, string ClientId, string ClientSecret)
+/// <param name="ClientId">Client used to log the test users in (password grant).</param>
+/// <param name="Audience">Resource server whose Authorization Services settings are evaluated; defaults to <paramref name="ClientId"/>.</param>
+public sealed record KeycloakSettings(string Url, string Realm, string ClientId, string ClientSecret, string Audience)
 {
-    public static KeycloakSettings FromEnvironment() => new(
-        Environment.GetEnvironmentVariable("KEYCLOAK_URL")?.TrimEnd('/') ?? "http://localhost:8180",
-        Environment.GetEnvironmentVariable("KEYCLOAK_REALM") ?? "rbac-demo",
-        Environment.GetEnvironmentVariable("KEYCLOAK_CLIENT_ID") ?? "rbac-console",
-        Environment.GetEnvironmentVariable("KEYCLOAK_CLIENT_SECRET") ?? "rbac-console-secret");
+    public static KeycloakSettings FromEnvironment()
+    {
+        var clientId = Environment.GetEnvironmentVariable("KEYCLOAK_CLIENT_ID") ?? "rbac-console";
+        return new(
+            Environment.GetEnvironmentVariable("KEYCLOAK_URL")?.TrimEnd('/') ?? "http://localhost:8180",
+            Environment.GetEnvironmentVariable("KEYCLOAK_REALM") ?? "rbac-demo",
+            clientId,
+            Environment.GetEnvironmentVariable("KEYCLOAK_CLIENT_SECRET") ?? "rbac-console-secret",
+            Environment.GetEnvironmentVariable("KEYCLOAK_AUDIENCE") ?? clientId);
+    }
 }
 
 /// <summary>One granted permission as returned by the UMA grant with <c>response_mode=permissions</c>.</summary>
@@ -101,7 +108,7 @@ public sealed class KeycloakClient
         var form = new Dictionary<string, string>
         {
             ["grant_type"] = UmaTicketGrant,
-            ["audience"] = _settings.ClientId   // the resource server whose resources/policies are evaluated
+            ["audience"] = _settings.Audience   // the resource server whose resources/policies are evaluated
         };
         foreach (var (key, value) in extra) form[key] = value;
         return form;
