@@ -194,6 +194,11 @@ $env:KEYCLOAK_AUDIENCE = 'rbac-api'; dotnet run --project src/Rbac.Cli
 - **One 401 right after `setup-realm.ps1 -Recreate`** while the API keeps running: re-creating the realm rotates
   its signing keys and the API still has the old ones cached. The first request with an unknown key id fails and
   triggers a refresh; everything after that succeeds. Restart the API or just retry.
+- **Authorization → Evaluate shows the wrong scope per permission** (e.g. for bob, *Read orders* says it granted
+  `order:write`): a display bug in the Keycloak 26.7 admin console, the expanded permission rows all show the scopes
+  of one permission picked by the *resource's* row index ([keycloak/keycloak#54141](https://github.com/keycloak/keycloak/issues/54141)).
+  The resource row's *Overall Results* / *Scopes*, the *Show authorization data* button and `src/Rbac.Cli` read the
+  real evaluation result and are correct.
 - **`setup-realm.ps1` fails with 401 mid-way**: the admin token lives 60 s; the script fetches a fresh one
   before the import, but a very slow Keycloak can still exceed it. Just re-run.
 
