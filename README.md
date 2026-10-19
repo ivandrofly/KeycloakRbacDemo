@@ -196,7 +196,7 @@ $env:KEYCLOAK_AUDIENCE = 'rbac-api'; dotnet run --project src/Rbac.Cli
   triggers a refresh; everything after that succeeds. Restart the API or just retry.
 - **Authorization → Evaluate shows the wrong scope per permission** (e.g. for bob, *Read orders* says it granted
   `order:write`): a display bug in the Keycloak 26.7 admin console, the expanded permission rows all show the scopes
-  of one permission picked by the *resource's* row index ([keycloak/keycloak#54141](https://github.com/keycloak/keycloak/issues/54141)).
+  of one permission picked by the *resource's* row index ([keycloak/keycloak#54141](https://github.com/keycloak/keycloak/issues/54141), fix in [PR #54142](https://github.com/keycloak/keycloak/pull/54142)).
   The resource row's *Overall Results* / *Scopes*, the *Show authorization data* button and `src/Rbac.Cli` read the
   real evaluation result and are correct.
 - **`setup-realm.ps1` fails with 401 mid-way**: the admin token lives 60 s; the script fetches a fresh one
