@@ -123,7 +123,9 @@ public sealed class AuthService
         if (!resourceAccess.TryGetProperty(clientId, out var client) ||
             !client.TryGetProperty("roles", out var roles) ||
             roles.ValueKind != JsonValueKind.Array)
+        {
             return [];
+        }
 
         return roles.EnumerateArray().Select(r => r.GetString()!).Where(r => r.Length > 0).Order().ToList();
     }

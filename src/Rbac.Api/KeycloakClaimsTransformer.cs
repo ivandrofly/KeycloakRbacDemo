@@ -32,7 +32,9 @@ public static class KeycloakClaimsTransformer
         if (!doc.RootElement.TryGetProperty(apiClientId, out var client) ||
             !client.TryGetProperty("roles", out var roles) ||
             roles.ValueKind != JsonValueKind.Array)
+        {
             return;
+        }
 
         foreach (var entry in roles.EnumerateArray())
         {
