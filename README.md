@@ -9,12 +9,14 @@ A small, end-to-end demo of role-based access control:
   The server still enforces every rule.
 
 ```
-keycloak/realm-export.json   realm, roles, clients, mappers, test users
-keycloak/setup-realm.ps1     imports the realm via the Keycloak Admin REST API
-scripts/smoke-test.ps1       calls every endpoint as every user and checks the status codes
-src/Rbac.Api                 the protected API           -> http://localhost:5100
-src/Rbac.Wpf                 the desktop client
-src/Rbac.Cli                 console app: asks Keycloak Authorization Services for permission decisions
+keycloak/realm-export.json        realm rbac-demo: roles, clients, mappers, test users
+keycloak/consent-demo-realm.json  realm consent-demo: a public client with consent required + two users with profile data
+keycloak/setup-realm.ps1          imports a realm file via the Keycloak Admin REST API (-RealmFile picks which)
+scripts/smoke-test.ps1            calls every endpoint as every user and checks the status codes
+src/Rbac.Api                      the protected API           -> http://localhost:5100
+src/Rbac.Wpf                      the desktop client (realm rbac-demo)
+src/Rbac.Cli                      console app: asks Keycloak Authorization Services for permission decisions
+src/Consent.Wpf                   second desktop client: the consent demo (realm consent-demo, no API, no roles)
 ```
 
 ## Authorization model
@@ -85,6 +87,45 @@ user signs in through the WPF app, Keycloak shows the keycloak.v2 consent page l
 app*) and the requested scopes (user profile, email, roles). Consent is remembered per user; revoke it in the Account
 console (`http://localhost:8180/realms/rbac-demo/account`, *Applications*) to see the page again. Re-importing the
 realm with `-Recreate` resets all consents. The other clients have no login screen, so these settings only exist here.
+
+## Consent demo: `src/Consent.Wpf` in its own realm
+
+A second, independent WPF app whose only subject is consent. It lives in the realm **`consent-demo`**
+(`keycloak/consent-demo-realm.json`), so nothing in it touches `rbac-demo`:
+
+| Piece | Setting |
+|---|---|
+| Client `consent-wpf` | public, Authorization Code + PKCE S256, loopback redirect `http://127.0.0.1:7891/*`, **Consent required**, login theme `keycloak.v2`, consent screen text *Consent Demo desktop app* |
+| Default client scopes | `basic`, `profile`, `email`, `roles` (always requested; `roles` is what puts `account` into `aud` so the app may call the account API) |
+| Optional client scopes | `address`, `phone`, `offline_access` (only requested when the app asks for them) |
+| Users | `dave` / `erin` (password = username) with first/last name, email, `phoneNumber` and the address attributes the built-in `phone` and `address` mappers read |
+| User profile | `unmanagedAttributePolicy: ENABLED`, so those extra attributes survive the import and show up in the admin console |
+
+What the app does:
+
+1. While signed out you tick which **optional** scopes to request. The default scopes are listed but cannot be
+   un-ticked: Keycloak applies default client scopes whether or not the `scope` parameter names them.
+2. *Sign in with Keycloak* opens the keycloak.v2 login page, then the **consent page**, which lists exactly the
+   scopes that were requested (User profile, Email address, User roles, plus Address / Phone number / Offline access
+   when ticked) and the client's consent text.
+3. After the redirect the app shows the **granted scopes** (the `scope` claim of the access token) and every
+   **ID-token claim** those scopes produced (`name`, `email`, `phone_number`, the nested `address` object, ...).
+   `roles` and `basic` are on the consent page but never in the `scope` claim: those built-in scopes have
+   *Include in token scope* switched off.
+4. Keycloak **stores the consent**: signing in again does not ask, unless the app requests a scope that was not
+   granted before (tick `offline_access` on the second run to see the consent page come back for that one scope).
+5. *Revoke consent* calls the account REST API with the user's own access token
+   (`DELETE /realms/consent-demo/account/applications/consent-wpf/consent`), then signs out locally; the next
+   sign-in asks again. *Open account console* opens `/realms/consent-demo/account/#/applications`, where the
+   user can see and revoke the same consent without the app.
+
+```powershell
+.\keycloak\setup-realm.ps1 -RealmFile .\keycloak\consent-demo-realm.json   # once (add -Recreate to re-import)
+dotnet run --project src/Consent.Wpf
+```
+
+The app and `Rbac.Wpf` can run side by side: different realms, different clients, different loopback ports
+(7891 vs 7890).
 
 ## Authorization Services (Keycloak-side permission decisions)
 
@@ -166,6 +207,7 @@ $env:KEYCLOAK_AUDIENCE = 'rbac-wpf'; dotnet run --project src/Rbac.Cli   # the W
 
    ```powershell
    .\keycloak\setup-realm.ps1            # add -Recreate to drop and re-import
+   .\keycloak\setup-realm.ps1 -RealmFile .\keycloak\consent-demo-realm.json   # only for the consent demo
    ```
 
 3. **Run the API**:
@@ -188,7 +230,13 @@ $env:KEYCLOAK_AUDIENCE = 'rbac-wpf'; dotnet run --project src/Rbac.Cli   # the W
    dotnet run --project src/Rbac.Cli
    ```
 
-6. Optional: **smoke-test the API** without the UI:
+6. Optional: **run the consent demo** (needs the `consent-demo` realm from step 2, not the API):
+
+   ```powershell
+   dotnet run --project src/Consent.Wpf
+   ```
+
+7. Optional: **smoke-test the API** without the UI:
 
    ```powershell
    .\scripts\smoke-test.ps1

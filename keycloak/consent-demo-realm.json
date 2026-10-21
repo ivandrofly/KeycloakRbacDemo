@@ -1,0 +1,149 @@
+{
+  "realm": "consent-demo",
+  "displayName": "Consent Demo",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "clients": [
+    {
+      "clientId": "consent-wpf",
+      "name": "Consent Demo WPF client",
+      "description": "Public desktop client (Authorization Code + PKCE, loopback redirect on port 7891). Consent required, login theme keycloak.v2. src/Consent.Wpf asks for optional scopes and shows what the user granted.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "fullScopeAllowed": true,
+      "consentRequired": true,
+      "redirectUris": [
+        "http://127.0.0.1:7891/*",
+        "http://localhost:7891/*"
+      ],
+      "webOrigins": [
+        "+"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://127.0.0.1:7891/*##http://localhost:7891/*",
+        "login_theme": "keycloak.v2",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": "Consent Demo desktop app"
+      },
+      "defaultClientScopes": [
+        "basic",
+        "profile",
+        "email",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "dave",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Dave",
+      "lastName": "Diaz",
+      "email": "dave@example.com",
+      "attributes": {
+        "phoneNumber": [
+          "+1 555 0100"
+        ],
+        "phoneNumberVerified": [
+          "true"
+        ],
+        "street": [
+          "1 Market St"
+        ],
+        "locality": [
+          "San Francisco"
+        ],
+        "region": [
+          "CA"
+        ],
+        "postal_code": [
+          "94105"
+        ],
+        "country": [
+          "US"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "dave",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "default-roles-consent-demo"
+      ]
+    },
+    {
+      "username": "erin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Erin",
+      "lastName": "Evans",
+      "email": "erin@example.com",
+      "attributes": {
+        "phoneNumber": [
+          "+44 20 7946 0000"
+        ],
+        "phoneNumberVerified": [
+          "true"
+        ],
+        "street": [
+          "10 Downing St"
+        ],
+        "locality": [
+          "London"
+        ],
+        "region": [
+          ""
+        ],
+        "postal_code": [
+          "SW1A 2AA"
+        ],
+        "country": [
+          "GB"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "erin",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "default-roles-consent-demo"
+      ]
+    }
+  ],
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "providerId": "declarative-user-profile",
+        "subComponents": {},
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\": [{\"name\": \"username\", \"displayName\": \"${username}\", \"validations\": {\"length\": {\"min\": 3, \"max\": 255}, \"username-prohibited-characters\": {}, \"up-username-not-idn-homograph\": {}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false}, {\"name\": \"email\", \"displayName\": \"${email}\", \"validations\": {\"email\": {}, \"length\": {\"max\": 255}}, \"required\": {\"roles\": [\"user\"]}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false}, {\"name\": \"firstName\", \"displayName\": \"${firstName}\", \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}, \"required\": {\"roles\": [\"user\"]}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false}, {\"name\": \"lastName\", \"displayName\": \"${lastName}\", \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}, \"required\": {\"roles\": [\"user\"]}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false}], \"groups\": [{\"name\": \"user-metadata\", \"displayHeader\": \"User metadata\", \"displayDescription\": \"Attributes, which refer to user metadata\"}], \"unmanagedAttributePolicy\": \"ENABLED\"}"
+          ]
+        }
+      }
+    ]
+  }
+}

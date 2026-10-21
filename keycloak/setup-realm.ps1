@@ -1,10 +1,11 @@
 <#
 .SYNOPSIS
-    Creates the "rbac-demo" realm in a running Keycloak from realm-export.json.
+    Creates a realm in a running Keycloak from a realm export file (default: realm-export.json -> "rbac-demo").
 
 .EXAMPLE
     .\setup-realm.ps1 -AdminPassword 'secret'
-    .\setup-realm.ps1 -Recreate            # drop and re-import the realm
+    .\setup-realm.ps1 -Recreate                                   # drop and re-import the realm
+    .\setup-realm.ps1 -RealmFile .\consent-demo-realm.json        # the second realm (src/Consent.Wpf)
 #>
 [CmdletBinding()]
 param(
@@ -23,7 +24,8 @@ if (-not $AdminPassword) {
     $AdminPassword = [System.Net.NetworkCredential]::new('', $secure).Password
 }
 
-$realm = (Get-Content $RealmFile -Raw | ConvertFrom-Json).realm
+$realmJson = Get-Content $RealmFile -Raw | ConvertFrom-Json
+$realm = $realmJson.realm
 Write-Host "Keycloak : $KeycloakUrl"
 Write-Host "Realm    : $realm"
 
@@ -67,8 +69,17 @@ Write-Host ""
 Write-Host "Realm created. Issuer: $issuer" -ForegroundColor Green
 Write-Host "Admin console: $KeycloakUrl/admin/master/console/#/$realm"
 Write-Host ""
-Write-Host "Test users (password = username):"
-[pscustomobject]@{ User = 'alice'; Group = '/admins'; Role = 'admin'; ExtraPermission = '';            Effective = 'order:read, order:write, order:delete, admin endpoints' },
-[pscustomobject]@{ User = 'bob';   Group = '/users';  Role = 'user';  ExtraPermission = '';            Effective = 'order:read' },
-[pscustomobject]@{ User = 'carol'; Group = '/users';  Role = 'user';  ExtraPermission = 'order:write'; Effective = 'order:read, order:write' } |
-    Format-Table -AutoSize
+Write-Host "Test users (password = username), from ${RealmFile}:"
+$realmJson.users | ForEach-Object {
+    $clientRoles = @()
+    if ($_.clientRoles) {
+        foreach ($p in $_.clientRoles.PSObject.Properties) { $clientRoles += ($p.Value | ForEach-Object { "$($p.Name)/$_" }) }
+    }
+    [pscustomobject]@{
+        User        = $_.username
+        Name        = "$($_.firstName) $($_.lastName)".Trim()
+        Email       = $_.email
+        Groups      = ($_.groups -join ', ')
+        ClientRoles = ($clientRoles -join ', ')
+    }
+} | Format-Table -AutoSize
