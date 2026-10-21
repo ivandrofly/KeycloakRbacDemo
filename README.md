@@ -17,6 +17,7 @@ src/Rbac.Api                      the protected API           -> http://localhos
 src/Rbac.Wpf                      the desktop client (realm rbac-demo)
 src/Rbac.Cli                      console app: asks Keycloak Authorization Services for permission decisions
 src/Consent.Wpf                   second desktop client: the consent demo (realm consent-demo, no API, no roles)
+simple/                           minimal stand-alone sample: realm simple-demo, Simple.Api (:5200), Simple.Console
 ```
 
 ## Authorization model

@@ -1,0 +1,66 @@
+{
+  "realm": "simple-demo",
+  "displayName": "Simple RBAC Demo",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "accessTokenLifespan": 300,
+  "roles": {
+    "realm": [
+      { "name": "admin", "description": "May call /admin" },
+      { "name": "user",  "description": "May call /user" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "simple-api",
+      "name": "Simple API",
+      "description": "Public client with password grant, used by Simple.Console to log the test users in. Also the token audience.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [ "basic", "profile", "email", "roles" ],
+      "optionalClientScopes": [],
+      "protocolMappers": [
+        {
+          "name": "simple-api audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "simple-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Ada",
+      "lastName": "Admin",
+      "email": "admin@example.com",
+      "credentials": [ { "type": "password", "value": "admin", "temporary": false } ],
+      "realmRoles": [ "default-roles-simple-demo", "admin", "user" ]
+    },
+    {
+      "username": "user",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Uma",
+      "lastName": "User",
+      "email": "user@example.com",
+      "credentials": [ { "type": "password", "value": "user", "temporary": false } ],
+      "realmRoles": [ "default-roles-simple-demo", "user" ]
+    }
+  ]
+}

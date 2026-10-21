@@ -1,0 +1,31 @@
+@api = http://localhost:5200
+@keycloak = http://127.0.0.1:8180/realms/simple-demo
+
+### 1. Log in as admin (password = username). Run this first; it stores the token for the requests below.
+#    Swap username/password to "user" to test the other user.
+POST {{keycloak}}/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password&client_id=simple-api&username=admin&password=admin
+
+> {%
+    client.global.set("token", response.body.access_token);
+%}
+
+### 2. Public, no token needed -> 200
+GET {{api}}/public
+
+### 3. Who am I? (any signed-in user) -> 200, shows name and roles
+GET {{api}}/me
+Authorization: Bearer {{token}}
+
+### 4. Needs role "user" -> 200 for admin and user
+GET {{api}}/user
+Authorization: Bearer {{token}}
+
+### 5. Needs role "admin" -> 200 for admin, 403 for user
+GET {{api}}/admin
+Authorization: Bearer {{token}}
+
+### 6. Without a token -> 401
+GET {{api}}/admin
