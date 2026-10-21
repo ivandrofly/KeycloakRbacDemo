@@ -73,11 +73,13 @@ orders.MapGet("/", (OrderStore store) => Results.Ok(store.All()))
 orders.MapPost("/", (CreateOrderRequest req, OrderStore store, AuditLog audit, ClaimsPrincipal user) =>
     {
         if (string.IsNullOrWhiteSpace(req.Customer) || req.Amount <= 0)
+        {
             return Results.ValidationProblem(new Dictionary<string, string[]>
             {
                 ["customer"] = string.IsNullOrWhiteSpace(req.Customer) ? ["Customer is required."] : [],
                 ["amount"]   = req.Amount <= 0 ? ["Amount must be greater than zero."] : []
             });
+        }
 
         var order = store.Add(req.Customer.Trim(), req.Amount);
         audit.Record(user.Identity!.Name!, "order.created", $"#{order.Id} {order.Customer} {order.Amount:0.00}");
@@ -88,7 +90,10 @@ orders.MapPost("/", (CreateOrderRequest req, OrderStore store, AuditLog audit, C
 
 orders.MapDelete("/{id:int}", (int id, OrderStore store, AuditLog audit, ClaimsPrincipal user) =>
     {
-        if (!store.Remove(id, out var removed)) return Results.NotFound();
+        if (!store.Remove(id, out var removed))
+        {
+            return Results.NotFound();
+        }
         audit.Record(user.Identity!.Name!, "order.deleted", $"#{removed!.Id} {removed.Customer}");
         return Results.NoContent();
     })

@@ -4,8 +4,9 @@ A small, end-to-end demo of role-based access control:
 
 - **Keycloak** issues tokens that carry the user's roles and permissions.
 - **Rbac.Api** (ASP.NET Core minimal API) enforces them with ordinary `RequireRole` / `RequireClaim` policies.
-- **Rbac.Wpf** signs in through the system browser (Authorization Code + PKCE) and shows or hides UI
-  depending on what the token says the user may do. The server still enforces every rule.
+- **Rbac.Wpf** signs in through the system browser (Authorization Code + PKCE, with a consent screen), then asks
+  **Keycloak Authorization Services** which permissions the user holds and shows or hides UI accordingly.
+  The server still enforces every rule.
 
 ```
 keycloak/realm-export.json   realm, roles, clients, mappers, test users
@@ -71,10 +72,19 @@ from your Docker compose environment and is not touched by this project.
 
 | Client | Type | Used by |
 |---|---|---|
-| `rbac-api` | confidential, no login flows, **Authorization Services enabled** | the API: owns all roles (`admin`, `user`, `order:*`) and is the token audience (`aud`). Carries the same demo resources, scopes, policies and permissions as `rbac-console`. |
-| `rbac-wpf` | public, PKCE S256, redirect `http://127.0.0.1:7890/*` | the WPF app |
+| `rbac-api` | confidential, no login flows, **Authorization Services enabled** | the API: owns all roles (`admin`, `user`, `order:*`) and is the token audience (`aud`). Carries the same demo resources, scopes, policies and permissions as `rbac-wpf` and `rbac-console`. |
+| `rbac-wpf` | confidential (secret `rbac-wpf-secret`), PKCE S256, redirect `http://127.0.0.1:7890/*`, **Authorization Services enabled**, **consent required**, login theme `keycloak.v2` | the WPF app. It is confidential only because Keycloak allows Authorization Services on confidential clients alone; a secret compiled into a desktop app protects nothing, so treat it as a demo convenience. |
 | `rbac-test-cli` | public, **password grant** | `scripts/smoke-test.ps1` and `Rbac.Api.http` only. Test convenience, delete it for anything real. |
 | `rbac-console` | confidential (secret `rbac-console-secret`), **password grant**, **Authorization Services enabled** | `src/Rbac.Cli`. The resource server for the [Authorization Services](#authorization-services-keycloak-side-permission-decisions) section. The fixed secret and the password grant are test conveniences, same caveat as above. |
+
+### Consent and login theme (`rbac-wpf` -> Login settings)
+
+`rbac-wpf` has **Consent required** on and **Login theme** set to `keycloak.v2` (realm JSON: `consentRequired`,
+`attributes.login_theme`, `attributes.display.on.consent.screen`, `attributes.consent.screen.text`). The first time a
+user signs in through the WPF app, Keycloak shows the keycloak.v2 consent page listing the client (*RBAC WPF desktop
+app*) and the requested scopes (user profile, email, roles). Consent is remembered per user; revoke it in the Account
+console (`http://localhost:8180/realms/rbac-demo/account`, *Applications*) to see the page again. Re-importing the
+realm with `-Recreate` resets all consents. The other clients have no login screen, so these settings only exist here.
 
 ## Authorization Services (Keycloak-side permission decisions)
 
@@ -84,19 +94,28 @@ scopes (actions) on them, and the policies that grant them. A caller presents a 
 "may this user do `scope` on `resource`?"; Keycloak answers yes/no or hands back a *Requesting Party Token*
 (RPT) whose `authorization.permissions` claim lists everything the user may do.
 
-Both `rbac-api` and `rbac-console` are set up this way in `keycloak/realm-export.json` (`authorizationSettings`),
-with identical demo content. The policies reuse the `rbac-api` roles, so the two decision layers always agree:
+`rbac-api`, `rbac-wpf` and `rbac-console` are all set up this way in `keycloak/realm-export.json`
+(`authorizationSettings`), with identical demo content. The policies reuse the `rbac-api` roles, so the two decision
+layers always agree:
 
 | Resource | Scopes | Permission | Granted by policy |
 |---|---|---|---|
 | `Orders` (`/api/orders/*`) | `order:read` | *Read orders* | *Has order:read* (client role `rbac-api/order:read`) |
 | | `order:write` | *Write orders* | *Has order:write* (client role `rbac-api/order:write`) |
-| | `order:delete` | *Delete orders* | *Delete orders* (client role `rbac-api/order:delete`) |
+| | `order:delete` | *Delete orders* | *Has order:delete* (client role `rbac-api/order:delete`) |
 | `Audit log` (`/api/admin/audit`) | `audit:read` | *Read audit log* | *Is admin* (client role `rbac-api/admin`) |
 
-The role policies read the roles from the user's token, which is why `rbac-console` has `fullScopeAllowed` and the
-`roles` scope: the token must carry `resource_access.rbac-api.roles` or every policy denies. `rbac-api` has no login
-flow of its own; to evaluate *its* settings, log in through another client and pass `audience=rbac-api`.
+The role policies read the roles from the user's token, which is why `rbac-wpf` and `rbac-console` have
+`fullScopeAllowed` and the `roles` scope: the token must carry `resource_access.rbac-api.roles` or every policy denies.
+`rbac-api` has no login flow of its own; to evaluate *its* settings, log in through another client and pass
+`audience=rbac-api`.
+
+**The WPF app uses this for its UI.** After login (and after every token refresh) `AuthService` sends the access token
+back to Keycloak with `audience=rbac-wpf` and `response_mode=permissions` (`src/Rbac.Wpf/Auth/KeycloakAuthzClient.cs`).
+The answer, a list of `resource#scope` pairs such as `Orders#order:read`, fills the *Permissions* chips and drives
+`CanReadOrders`, `CanWriteOrders`, `CanDeleteOrders` and `IsAdmin` (= `Audit log#audit:read`) in `MainViewModel`.
+The token roles are still shown, but nothing in the UI is derived from them any more. A 403 `access_denied` from
+Keycloak means "nothing granted" and the app shows a screen with no orders card and no admin card.
 
 All of it goes through the ordinary token endpoint with the UMA ticket grant:
 
@@ -132,7 +151,8 @@ delegated the decision to Keycloak. Settings come from `KEYCLOAK_URL`, `KEYCLOAK
 defaults to the login client, so to check the settings on `rbac-api` instead:
 
 ```powershell
-$env:KEYCLOAK_AUDIENCE = 'rbac-api'; dotnet run --project src/Rbac.Cli
+$env:KEYCLOAK_AUDIENCE = 'rbac-api'; dotnet run --project src/Rbac.Cli   # the API's settings
+$env:KEYCLOAK_AUDIENCE = 'rbac-wpf'; dotnet run --project src/Rbac.Cli   # the WPF client's settings
 ```
 
 > Existing realms do not pick the client up automatically: run `.\keycloak\setup-realm.ps1 -Recreate` once.
@@ -154,8 +174,9 @@ $env:KEYCLOAK_AUDIENCE = 'rbac-api'; dotnet run --project src/Rbac.Cli
    dotnet run --project src/Rbac.Api
    ```
 
-4. **Run the WPF app** and click *Sign in with Keycloak*. Your browser opens the Keycloak login page;
-   after signing in, the browser redirects to the app's loopback listener on port 7890.
+4. **Run the WPF app** and click *Sign in with Keycloak*. Your browser opens the Keycloak login page
+   (keycloak.v2 theme); after signing in, and on the first login a consent page, the browser redirects to the app's
+   loopback listener on port 7890. The app then asks Keycloak Authorization Services what the user may do.
 
    ```powershell
    dotnet run --project src/Rbac.Wpf
@@ -199,6 +220,9 @@ $env:KEYCLOAK_AUDIENCE = 'rbac-api'; dotnet run --project src/Rbac.Cli
   of one permission picked by the *resource's* row index ([keycloak/keycloak#54141](https://github.com/keycloak/keycloak/issues/54141), fix in [PR #54142](https://github.com/keycloak/keycloak/pull/54142)).
   The resource row's *Overall Results* / *Scopes*, the *Show authorization data* button and `src/Rbac.Cli` read the
   real evaluation result and are correct.
+- **WPF login fails with `invalid_client` / `unauthorized_client`, or alice gets no permissions**: the realm in
+  Keycloak predates the `rbac-wpf` changes (confidential client with Authorization Services). Run
+  `.\keycloak\setup-realm.ps1 -Recreate` and restart the API.
 - **`setup-realm.ps1` fails with 401 mid-way**: the admin token lives 60 s; the script fetches a fresh one
   before the import, but a very slow Keycloak can still exceed it. Just re-run.
 
@@ -211,11 +235,16 @@ $env:KEYCLOAK_AUDIENCE = 'rbac-api'; dotnet run --project src/Rbac.Cli
 - Or assign a single permission directly (Users → bob → Role mapping → Assign role → filter by clients →
   `rbac-api order:write`): the *New order* form appears while the rest stays read-only.
 - Add a new permission (e.g. `order:approve`) as a client role on `rbac-api` (Clients → rbac-api → Roles), add it
-  to the `admin` composite, then add a policy and endpoint in `Program.cs` and a `CanApproveOrders` flag in
-  `MainViewModel`.
+  to the `admin` composite, then add a policy and endpoint in `Program.cs`. For the WPF app, also add the scope to the
+  `Orders` resource plus a *Has order:approve* policy and an *Approve orders* permission under Clients → rbac-wpf →
+  Authorization, and a `CanApproveOrders = HasScope("order:approve")` flag in `MainViewModel`.
+- Change what the UI shows without touching any role: Clients → rbac-wpf → Authorization → Permissions →
+  *Delete orders*, replace the policy *Has order:delete* with *Has order:write*. After her next sign-in carol sees
+  delete buttons, yet the API still answers `403` to her deletes: the UI follows Keycloak's decision for `rbac-wpf`,
+  the API enforces its own rules.
 - Add a new role (e.g. `auditor`) the same way; because it has no `:` it becomes a role claim, usable with
   `RequireRole("auditor")`.
-- Open Clients → rbac-console → Authorization → Evaluate, pick bob and the `Orders` resource, and compare the result
-  with what `src/Rbac.Cli` prints. Then edit the *Write orders* permission to also apply the *Is admin* policy and
+- Open Clients → rbac-wpf (or rbac-console) → Authorization → Evaluate, pick bob and the `Orders` resource, and
+  compare the result with the WPF app's *Permissions* chips or with what `src/Rbac.Cli` prints. Then edit the *Write orders* permission to also apply the *Is admin* policy and
   re-run the console app: nothing changes for alice, and carol now gets DENY because the decision strategy is
   *unanimous*.

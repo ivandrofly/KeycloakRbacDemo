@@ -83,7 +83,7 @@
                                 Command="{Binding LoadOrdersCommand}" Margin="0" />
                         <StackPanel>
                             <TextBlock Style="{StaticResource CardTitle}" Text="Orders" Margin="0" />
-                            <TextBlock Style="{StaticResource Muted}" Text="visible because you have order:read" />
+                            <TextBlock Style="{StaticResource Muted}" Text="visible because Keycloak granted Orders#order:read" />
                         </StackPanel>
                     </DockPanel>
 
@@ -91,7 +91,7 @@
                     <Border Grid.Row="1" Background="#F7F9FB" CornerRadius="8" Padding="12" Margin="0,0,0,10"
                             Visibility="{Binding CanWriteOrders, Converter={StaticResource BoolToVis}}">
                         <StackPanel>
-                            <TextBlock Style="{StaticResource Muted}" Text="New order (visible because you have order:write)" Margin="0,0,0,6" />
+                            <TextBlock Style="{StaticResource Muted}" Text="New order (visible because Keycloak granted Orders#order:write)" Margin="0,0,0,6" />
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
@@ -152,7 +152,7 @@
                     <StackPanel>
                         <TextBlock Style="{StaticResource CardTitle}" Text="Your access" />
 
-                        <TextBlock Style="{StaticResource Muted}" Text="Roles on rbac-api (who you are)" Margin="0,0,0,4" />
+                        <TextBlock Style="{StaticResource Muted}" Text="Roles on rbac-api, from the token (who you are)" Margin="0,0,0,4" />
                         <ItemsControl ItemsSource="{Binding Roles}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
@@ -166,7 +166,7 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
 
-                        <TextBlock Style="{StaticResource Muted}" Text="Permissions on rbac-api (what you may do)" Margin="0,6,0,4" />
+                        <TextBlock Style="{StaticResource Muted}" Text="Permissions granted by Keycloak Authorization Services on rbac-wpf (what you may do)" Margin="0,6,0,4" />
                         <ItemsControl ItemsSource="{Binding Permissions}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
@@ -201,7 +201,7 @@
                                     Command="{Binding LoadAuditCommand}" Margin="0" />
                             <StackPanel>
                                 <TextBlock Style="{StaticResource CardTitle}" Text="Admin · Audit log" Margin="0" />
-                                <TextBlock Style="{StaticResource Muted}" Text="visible because you have the admin role" />
+                                <TextBlock Style="{StaticResource Muted}" Text="visible because Keycloak granted Audit log#audit:read (policy: Is admin)" />
                             </StackPanel>
                         </DockPanel>
                         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">

@@ -26,7 +26,11 @@ Console.WriteLine($"Login via: {settings.ClientId}");
 Console.WriteLine($"Audience : {settings.Audience} (resource server whose Authorization Services settings are evaluated)");
 
 var discovery = await keycloak.DiscoverAsync();
-if (!discovery.IsSuccess) return Fail(2, discovery.Error!);
+if (!discovery.IsSuccess)
+{
+    return Fail(2, discovery.Error!);
+}
+
 Console.WriteLine($"Token endpoint: {discovery.Value}");
 
 var mismatches = 0;
@@ -55,12 +59,20 @@ foreach (var (user, expectations) in expected)
     // 2. What does Authorization Services say the user may access?
     var granted = await keycloak.GetPermissionsAsync(token);
     if (granted.IsSuccess)
+    {
         foreach (var p in granted.Value!.OrderBy(p => p.Resource))
+        {
             Console.WriteLine($"Granted: {p.Resource} -> {string.Join(", ", (p.Scopes ?? []).Order())}");
+        }
+    }
     else if (granted.StatusCode == System.Net.HttpStatusCode.Forbidden)
+    {
         Console.WriteLine("Granted: (nothing)");
+    }
     else
+    {
         return Fail(2, $"Permission query failed: {granted.Error}");
+    }
 
     // 3. One yes/no decision per resource#scope, compared with what the realm should produce.
     var actual = new bool?[permissions.Length];
@@ -68,11 +80,17 @@ foreach (var (user, expectations) in expected)
     {
         var decision = await keycloak.DecideAsync(token, permissions[i]);
         if (!decision.IsSuccess && decision.StatusCode != System.Net.HttpStatusCode.Forbidden)
+        {
             return Fail(2, $"Decision for {permissions[i]} failed: {decision.Error}");
+        }
 
         actual[i] = decision.Value;
         var ok = decision.Value == expectations[i];
-        if (!ok) mismatches++;
+        if (!ok)
+        {
+            mismatches++;
+        }
+
         Console.WriteLine($"{(ok ? "OK  " : "FAIL")} {permissions[i],-22} {(decision.Value ? "GRANT" : "DENY")}" +
                           (ok ? "" : $"  (expected {(expectations[i] ? "GRANT" : "DENY")})"));
     }
@@ -95,7 +113,9 @@ foreach (var (user, expectations) in expected)
 Console.WriteLine();
 Console.WriteLine($"{"Permission",-22} {string.Join(" ", expected.Keys.Select(u => $"{u,-6}"))}");
 for (var i = 0; i < permissions.Length; i++)
+{
     Console.WriteLine($"{permissions[i],-22} {string.Join(" ", summary.Select(s => $"{(s.Actual[i] == true ? "GRANT" : "DENY"),-6}"))}");
+}
 
 Console.WriteLine();
 if (mismatches == 0)

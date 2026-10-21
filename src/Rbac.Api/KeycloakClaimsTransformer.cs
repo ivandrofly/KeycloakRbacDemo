@@ -17,10 +17,16 @@ public static class KeycloakClaimsTransformer
 {
     public static void Apply(ClaimsPrincipal principal, string apiClientId)
     {
-        if (principal.Identity is not ClaimsIdentity identity) return;
+        if (principal.Identity is not ClaimsIdentity identity)
+        {
+            return;
+        }
 
         var resourceAccess = identity.FindFirst("resource_access")?.Value;
-        if (string.IsNullOrEmpty(resourceAccess)) return;
+        if (string.IsNullOrEmpty(resourceAccess))
+        {
+            return;
+        }
 
         using var doc = JsonDocument.Parse(resourceAccess);
         if (!doc.RootElement.TryGetProperty(apiClientId, out var client) ||
@@ -30,7 +36,10 @@ public static class KeycloakClaimsTransformer
 
         foreach (var entry in roles.EnumerateArray())
         {
-            if (entry.GetString() is not { Length: > 0 } name) continue;
+            if (entry.GetString() is not { Length: > 0 } name)
+            {
+                continue;
+            }
 
             identity.AddClaim(IsPermission(name)
                 ? new Claim(Claims.Permission, name)

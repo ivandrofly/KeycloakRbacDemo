@@ -54,8 +54,14 @@ public partial class MainViewModel : ObservableObject
         {
             ApplySession(await _auth.LoginAsync());
             SetStatus($"Signed in as {UserName}.");
-            if (CanReadOrders) await LoadOrdersCoreAsync();
-            if (IsAdmin) await LoadAuditCoreAsync();
+            if (CanReadOrders)
+            {
+                await LoadOrdersCoreAsync();
+            }
+            if (IsAdmin)
+            {
+                await LoadAuditCoreAsync();
+            }
         });
     }
 
@@ -85,7 +91,10 @@ public partial class MainViewModel : ObservableObject
         NewOrderCustomer = string.Empty;
         NewOrderAmount = string.Empty;
         SetStatus($"Order #{result.Value!.Id} created ({result.StatusText}).");
-        if (IsAdmin) await LoadAuditCoreAsync();
+        if (IsAdmin)
+        {
+            await LoadAuditCoreAsync();
+        }
     });
 
     private bool CanCreateOrder() =>
@@ -99,7 +108,10 @@ public partial class MainViewModel : ObservableObject
 
         Orders.Remove(order);
         SetStatus($"Order #{order.Id} deleted ({result.StatusText}).");
-        if (IsAdmin) await LoadAuditCoreAsync();
+        if (IsAdmin)
+        {
+            await LoadAuditCoreAsync();
+        }
     });
 
     [RelayCommand]
@@ -125,7 +137,10 @@ public partial class MainViewModel : ObservableObject
         var result = await _api.GetOrdersAsync();
         if (!result.IsSuccess) { SetStatus($"Load orders -> {result.StatusText}", error: true); return; }
         Orders.Clear();
-        foreach (var o in result.Value!) Orders.Add(o);
+        foreach (var o in result.Value!)
+        {
+            Orders.Add(o);
+        }
         SetStatus($"Loaded {Orders.Count} order(s).");
     }
 
@@ -134,10 +149,14 @@ public partial class MainViewModel : ObservableObject
         var result = await _api.GetAuditAsync();
         if (!result.IsSuccess) { SetStatus($"Load audit -> {result.StatusText}", error: true); return; }
         AuditEntries.Clear();
-        foreach (var e in result.Value!) AuditEntries.Add(e);
+        foreach (var e in result.Value!)
+        {
+            AuditEntries.Add(e);
+        }
     }
 
-    private void ApplySession(UserSession? session)
+    /// <param name="keepData">On a token refresh the loaded orders/audit entries stay; only identity and flags are recomputed.</param>
+    private void ApplySession(UserSession? session, bool keepData = false)
     {
         _session = session;
         _api.SetAccessToken(session?.AccessToken);
@@ -146,42 +165,59 @@ public partial class MainViewModel : ObservableObject
         UserName = session?.UserName ?? string.Empty;
         TokenExpires = session is null ? string.Empty : $"token expires {session.ExpiresAt.ToLocalTime():HH:mm:ss}";
 
-        IsAdmin = session?.HasRole("admin") ?? false;
-        CanReadOrders = session?.HasPermission("order:read") ?? false;
-        CanWriteOrders = session?.HasPermission("order:write") ?? false;
-        CanDeleteOrders = session?.HasPermission("order:delete") ?? false;
+        // All four flags are Keycloak Authorization Services decisions (resource#scope granted on rbac-wpf).
+        // The admin card follows "Audit log#audit:read", which the 'Is admin' policy grants.
+        IsAdmin = session?.HasScope("audit:read") ?? false;
+        CanReadOrders = session?.HasScope("order:read") ?? false;
+        CanWriteOrders = session?.HasScope("order:write") ?? false;
+        CanDeleteOrders = session?.HasScope("order:delete") ?? false;
 
         Roles.Clear();
         Permissions.Clear();
-        Orders.Clear();
-        AuditEntries.Clear();
-        if (session is null) return;
+        if (!keepData)
+        {
+            Orders.Clear();
+            AuditEntries.Clear();
+        }
+        if (session is null)
+        {
+            return;
+        }
 
-        foreach (var r in session.Roles) Roles.Add(r);
-        foreach (var p in session.Permissions) Permissions.Add(p);
+        foreach (var r in session.Roles)
+        {
+            Roles.Add(r);
+        }
+        foreach (var p in session.Permissions)
+        {
+            Permissions.Add(p);
+        }
     }
 
     private async Task EnsureFreshTokenAsync()
     {
-        if (_session is null || _session.ExpiresAt > DateTimeOffset.UtcNow.AddSeconds(30)) return;
-        ApplySessionTokensOnly(await _auth.RefreshAsync(_session));
-    }
-
-    private void ApplySessionTokensOnly(UserSession refreshed)
-    {
-        _session = refreshed;
-        _api.SetAccessToken(refreshed.AccessToken);
-        TokenExpires = $"token expires {refreshed.ExpiresAt.ToLocalTime():HH:mm:ss}";
+        if (_session is null || _session.ExpiresAt > DateTimeOffset.UtcNow.AddSeconds(30))
+        {
+            return;
+        }
+        // Re-asks Keycloak for permissions too, so a role change made in the admin console shows up after refresh.
+        ApplySession(await _auth.RefreshAsync(_session), keepData: true);
     }
 
     private async Task RunAsync(string busyMessage, Func<Task> action)
     {
-        if (IsBusy) return;
+        if (IsBusy)
+        {
+            return;
+        }
         IsBusy = true;
         SetStatus(busyMessage);
         try
         {
-            if (IsLoggedIn) await EnsureFreshTokenAsync();
+            if (IsLoggedIn)
+            {
+                await EnsureFreshTokenAsync();
+            }
             await action();
         }
         catch (Exception ex)

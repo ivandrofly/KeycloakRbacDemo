@@ -35,16 +35,23 @@ public sealed class ApiClient
     private async Task<ApiResult<T>> SendAsync<T>(HttpMethod method, string path, object? body = null)
     {
         using var request = new HttpRequestMessage(method, path);
-        if (body is not null) request.Content = JsonContent.Create(body);
+        if (body is not null)
+        {
+            request.Content = JsonContent.Create(body);
+        }
 
         try
         {
             using var response = await _http.SendAsync(request);
             if (!response.IsSuccessStatusCode)
+            {
                 return new ApiResult<T>(response.StatusCode, default, await response.Content.ReadAsStringAsync());
+            }
 
             if (response.StatusCode == HttpStatusCode.NoContent || response.Content.Headers.ContentLength == 0)
+            {
                 return new ApiResult<T>(response.StatusCode, default, null);
+            }
 
             var value = await response.Content.ReadFromJsonAsync<T>(Json);
             return new ApiResult<T>(response.StatusCode, value, null);

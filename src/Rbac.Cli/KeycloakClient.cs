@@ -59,7 +59,9 @@ public sealed class KeycloakClient
         {
             using var response = await _http.GetAsync($"{Issuer}/.well-known/uma2-configuration");
             if (!response.IsSuccessStatusCode)
+            {
                 return new(response.StatusCode, null, await response.Content.ReadAsStringAsync());
+            }
 
             using var doc = await response.Content.ReadFromJsonAsync<JsonDocument>();
             _tokenEndpoint = doc!.RootElement.GetProperty("token_endpoint").GetString();
@@ -110,21 +112,30 @@ public sealed class KeycloakClient
             ["grant_type"] = UmaTicketGrant,
             ["audience"] = _settings.Audience   // the resource server whose resources/policies are evaluated
         };
-        foreach (var (key, value) in extra) form[key] = value;
+        foreach (var (key, value) in extra)
+        {
+            form[key] = value;
+        }
+
         return form;
     }
 
     private async Task<KeycloakResult<T>> PostTokenAsync<T>(string? bearer, Dictionary<string, string> form, Func<JsonElement, T> read)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, TokenEndpoint) { Content = new FormUrlEncodedContent(form) };
-        if (bearer is not null) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
+        if (bearer is not null)
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
+        }
 
         try
         {
             using var response = await _http.SendAsync(request);
             var body = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode)
+            {
                 return new(response.StatusCode, default, DescribeError(body));
+            }
 
             using var doc = JsonDocument.Parse(body);
             return new(response.StatusCode, read(doc.RootElement), null);

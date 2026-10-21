@@ -220,15 +220,19 @@
     {
       "clientId": "rbac-wpf",
       "name": "RBAC WPF client",
-      "description": "Desktop client using Authorization Code + PKCE with a loopback redirect",
+      "description": "Desktop client: Authorization Code + PKCE with a loopback redirect. Confidential only so Authorization Services can be enabled; the app asks it for permission decisions. Consent required, login theme keycloak.v2.",
       "enabled": true,
       "protocol": "openid-connect",
-      "publicClient": true,
+      "publicClient": false,
+      "secret": "rbac-wpf-secret",
+      "bearerOnly": false,
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "serviceAccountsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": true,
       "fullScopeAllowed": true,
+      "consentRequired": true,
       "redirectUris": [
         "http://127.0.0.1:7890/*",
         "http://localhost:7890/*"
@@ -238,7 +242,10 @@
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "http://127.0.0.1:7890/*##http://localhost:7890/*"
+        "post.logout.redirect.uris": "http://127.0.0.1:7890/*##http://localhost:7890/*",
+        "login_theme": "keycloak.v2",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": "RBAC WPF desktop app"
       },
       "defaultClientScopes": [
         "openid",
@@ -262,7 +269,156 @@
             "introspection.token.claim": "true"
           }
         }
-      ]
+      ],
+      "authorizationSettings": {
+        "allowRemoteResourceManagement": false,
+        "policyEnforcementMode": "ENFORCING",
+        "decisionStrategy": "UNANIMOUS",
+        "scopes": [
+          {
+            "name": "order:read",
+            "displayName": "Read orders"
+          },
+          {
+            "name": "order:write",
+            "displayName": "Create orders"
+          },
+          {
+            "name": "order:delete",
+            "displayName": "Delete orders"
+          },
+          {
+            "name": "audit:read",
+            "displayName": "Read the audit log"
+          }
+        ],
+        "resources": [
+          {
+            "name": "Orders",
+            "displayName": "Orders",
+            "type": "urn:rbac-demo:resources:orders",
+            "ownerManagedAccess": false,
+            "uris": [
+              "/api/orders/*"
+            ],
+            "scopes": [
+              {
+                "name": "order:read"
+              },
+              {
+                "name": "order:write"
+              },
+              {
+                "name": "order:delete"
+              }
+            ]
+          },
+          {
+            "name": "Audit log",
+            "displayName": "Audit log",
+            "type": "urn:rbac-demo:resources:audit",
+            "ownerManagedAccess": false,
+            "uris": [
+              "/api/admin/audit"
+            ],
+            "scopes": [
+              {
+                "name": "audit:read"
+              }
+            ]
+          }
+        ],
+        "policies": [
+          {
+            "name": "Is admin",
+            "description": "Grants when the user has the rbac-api client role 'admin' (evaluated for the WPF client)",
+            "type": "role",
+            "logic": "POSITIVE",
+            "decisionStrategy": "UNANIMOUS",
+            "config": {
+              "roles": "[{\"id\": \"rbac-api/admin\", \"required\": false}]"
+            }
+          },
+          {
+            "name": "Has order:read",
+            "description": "Grants when the user has the rbac-api client role 'order:read' (evaluated for the WPF client)",
+            "type": "role",
+            "logic": "POSITIVE",
+            "decisionStrategy": "UNANIMOUS",
+            "config": {
+              "roles": "[{\"id\": \"rbac-api/order:read\", \"required\": false}]"
+            }
+          },
+          {
+            "name": "Has order:write",
+            "description": "Grants when the user has the rbac-api client role 'order:write' (evaluated for the WPF client)",
+            "type": "role",
+            "logic": "POSITIVE",
+            "decisionStrategy": "UNANIMOUS",
+            "config": {
+              "roles": "[{\"id\": \"rbac-api/order:write\", \"required\": false}]"
+            }
+          },
+          {
+            "name": "Has order:delete",
+            "description": "Grants when the user has the rbac-api client role 'order:delete' (evaluated for the WPF client)",
+            "type": "role",
+            "logic": "POSITIVE",
+            "decisionStrategy": "UNANIMOUS",
+            "config": {
+              "roles": "[{\"id\": \"rbac-api/order:delete\", \"required\": false}]"
+            }
+          },
+          {
+            "name": "Read orders",
+            "description": "Orders#order:read requires policy 'Has order:read' (evaluated for the WPF client)",
+            "type": "scope",
+            "logic": "POSITIVE",
+            "decisionStrategy": "UNANIMOUS",
+            "config": {
+              "resources": "[\"Orders\"]",
+              "scopes": "[\"order:read\"]",
+              "applyPolicies": "[\"Has order:read\"]"
+            }
+          },
+          {
+            "name": "Write orders",
+            "description": "Orders#order:write requires policy 'Has order:write' (evaluated for the WPF client)",
+            "type": "scope",
+            "logic": "POSITIVE",
+            "decisionStrategy": "UNANIMOUS",
+            "config": {
+              "resources": "[\"Orders\"]",
+              "scopes": "[\"order:write\"]",
+              "applyPolicies": "[\"Has order:write\"]"
+            }
+          },
+          {
+            "name": "Delete orders",
+            "description": "Orders#order:delete requires policy 'Has order:delete' (evaluated for the WPF client)",
+            "type": "scope",
+            "logic": "POSITIVE",
+            "decisionStrategy": "UNANIMOUS",
+            "config": {
+              "resources": "[\"Orders\"]",
+              "scopes": "[\"order:delete\"]",
+              "applyPolicies": "[\"Has order:delete\"]"
+            }
+          },
+          {
+            "name": "Read audit log",
+            "description": "Audit log#audit:read requires policy 'Is admin' (evaluated for the WPF client)",
+            "type": "scope",
+            "logic": "POSITIVE",
+            "decisionStrategy": "UNANIMOUS",
+            "config": {
+              "resources": "[\"Audit log\"]",
+              "scopes": "[\"audit:read\"]",
+              "applyPolicies": "[\"Is admin\"]"
+            }
+          }
+        ]
+      }
     },
     {
       "clientId": "rbac-test-cli",

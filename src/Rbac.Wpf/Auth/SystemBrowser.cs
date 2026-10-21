@@ -34,7 +34,9 @@ public sealed class SystemBrowser(int port) : IBrowser
                 var requestLine = await ReadRequestLineAsync(stream, linked.Token);
 
                 if (requestLine is null || !TryGetPath(requestLine, out var pathAndQuery))
+                {
                     continue;
+                }
 
                 var callback = new Uri(new Uri(options.EndUrl), pathAndQuery);
                 if (callback.AbsolutePath.TrimEnd('/') != new Uri(options.EndUrl).AbsolutePath.TrimEnd('/'))
@@ -69,7 +71,10 @@ public sealed class SystemBrowser(int port) : IBrowser
     {
         var buffer = new byte[8192];
         var read = await stream.ReadAsync(buffer, ct);
-        if (read == 0) return null;
+        if (read == 0)
+        {
+            return null;
+        }
         var text = Encoding.ASCII.GetString(buffer, 0, read);
         var end = text.IndexOf("\r\n", StringComparison.Ordinal);
         return end < 0 ? text : text[..end];
